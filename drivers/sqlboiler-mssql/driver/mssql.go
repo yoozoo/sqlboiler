@@ -273,6 +273,10 @@ func (m *MSSQLDriver) Columns(schema, tableName string, whitelist, blacklist []s
 	return columns, nil
 }
 
+func (m *MSSQLDriver) Indexes(schema, tableName string) ([]*drivers.Index, error) {
+	return nil, nil
+}
+
 // PrimaryKeyInfo looks up the primary key for a table.
 func (m *MSSQLDriver) PrimaryKeyInfo(schema, tableName string) (*drivers.PrimaryKey, error) {
 	pkey := &drivers.PrimaryKey{}

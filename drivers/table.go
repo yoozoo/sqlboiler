@@ -9,6 +9,7 @@ type Table struct {
 	// Example value: "schema_name"."table_name"
 	SchemaName string   `json:"schema_name"`
 	Columns    []Column `json:"columns"`
+	Indexes    []*Index `json:"indexes"`
 
 	PKey  *PrimaryKey  `json:"p_key"`
 	FKeys []ForeignKey `json:"f_keys"`

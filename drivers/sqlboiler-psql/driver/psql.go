@@ -217,10 +217,10 @@ func (p *PostgresDriver) Columns(schema, tableName string, whitelist, blacklist 
 
 		c.is_nullable = 'YES' as is_nullable,
 		(case
-			when (select 
+			when (select
 		    case
 			    when column_name = 'is_identity' then (select c.is_identity = 'YES' as is_identity)
-		    else 
+		    else
 			    false
 		    end as is_identity from information_schema.columns
 		    WHERE table_schema='information_schema' and table_name='columns' and column_name='is_identity') IS NULL then 'NO' else is_identity end) = 'YES' as is_identity,
@@ -302,6 +302,10 @@ func (p *PostgresDriver) Columns(schema, tableName string, whitelist, blacklist 
 	}
 
 	return columns, nil
+}
+
+func (m *PostgresDriver) Indexes(schema, tableName string) ([]*drivers.Index, error) {
+	return nil, nil
 }
 
 // PrimaryKeyInfo looks up the primary key for a table.

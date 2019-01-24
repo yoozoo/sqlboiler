@@ -70,6 +70,7 @@ type Dialect struct {
 type Constructor interface {
 	TableNames(schema string, whitelist, blacklist []string) ([]string, error)
 	Columns(schema, tableName string, whitelist, blacklist []string) ([]Column, error)
+	Indexes(schema, tableName string) ([]*Index, error)
 	PrimaryKeyInfo(schema, tableName string) (*PrimaryKey, error)
 	ForeignKeyInfo(schema, tableName string) ([]ForeignKey, error)
 
@@ -101,6 +102,10 @@ func Tables(c Constructor, schema string, whitelist, blacklist []string) ([]Tabl
 
 		for i, col := range t.Columns {
 			t.Columns[i] = c.TranslateColumnType(col)
+		}
+
+		if t.Indexes, err = c.Indexes(schema, name); err != nil {
+			return nil, errors.Wrapf(err, "unable to fetch table index info (%s)", name)
 		}
 
 		if t.PKey, err = c.PrimaryKeyInfo(schema, name); err != nil {

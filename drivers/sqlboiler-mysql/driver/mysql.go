@@ -197,7 +197,7 @@ func (m *MySQLDriver) Columns(schema, tableName string, whitelist, blacklist []s
 			from information_schema.table_constraints tc
 			inner join information_schema.key_column_usage kcu
 				on tc.constraint_name = kcu.constraint_name and tc.table_name = kcu.table_name and tc.table_schema = kcu.table_schema
-			where c.table_name = tc.table_name and c.column_name = kcu.column_name and c.table_schema = kcu.constraint_schema and 
+			where c.table_name = tc.table_name and c.column_name = kcu.column_name and c.table_schema = kcu.constraint_schema and
 				(tc.constraint_type = 'PRIMARY KEY' or tc.constraint_type = 'UNIQUE') and
 				(select count(*) from information_schema.key_column_usage where table_schema = kcu.table_schema and constraint_schema = kcu.table_schema and table_name = tc.table_name and constraint_name = tc.constraint_name) = 1
 		) as is_unique
@@ -253,6 +253,54 @@ func (m *MySQLDriver) Columns(schema, tableName string, whitelist, blacklist []s
 	}
 
 	return columns, nil
+}
+
+func (m *MySQLDriver) Indexes(schema, tableName string) ([]*drivers.Index, error) {
+	var indexes []*drivers.Index
+
+	query := `
+	SELECT INDEX_NAME, NON_UNIQUE, COLUMN_NAME
+	FROM INFORMATION_SCHEMA.STATISTICS
+	WHERE TABLE_SCHEMA = ? and table_name=? and INDEX_NAME != 'PRIMARY'
+	order by INDEX_NAME, SEQ_IN_INDEX;
+	`
+
+	var rows *sql.Rows
+	var err error
+	if rows, err = m.conn.Query(query, schema, tableName); err != nil {
+		return nil, err
+	}
+
+	var idx *drivers.Index
+
+	for rows.Next() {
+		var INDEX_NAME, COLUMN_NAME string
+		var NON_UNIQUE bool
+		idx = new(drivers.Index)
+
+		err = rows.Scan(&INDEX_NAME, &NON_UNIQUE, &COLUMN_NAME)
+		if err != nil {
+			return nil, err
+		}
+
+		idx.Name = INDEX_NAME
+		idx.Unique = !NON_UNIQUE
+
+		size := len(indexes)
+		if size > 0 && indexes[size-1].Name == idx.Name {
+			idx = indexes[size-1]
+		} else {
+			indexes = append(indexes, idx)
+		}
+
+		idx.Columns = append(idx.Columns, COLUMN_NAME)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return indexes, nil
 }
 
 // PrimaryKeyInfo looks up the primary key for a table.
