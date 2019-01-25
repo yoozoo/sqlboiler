@@ -19,6 +19,49 @@ func ({{$alias.DownPlural}}Mgr) GetBy{{$pkTitles | join ""}}({{$pkArgs}}, select
 	{{end -}}
 }
 
+{{if len $pkTitles | ge 1}}
+{{- $pkTitlePlural := $pkTitles | join "" | plural -}}
+{{- $pkParamName := index .Table.PKey.Columns 0 -}}
+{{- $pkParamType := index $colDefs.Types 0 -}}
+{{- $pkArgsPlural := plural $pkParamName -}}
+func ({{$alias.DownPlural}}Mgr) GetBy{{$pkTitlePlural}}({{$pkArgsPlural}} []{{$pkParamType}}, selectCols ...string) (map[{{$pkParamType}}]*{{$alias.UpSingular}}, error) {
+	var o []*{{$alias.UpSingular}}
+
+	if len({{$pkArgsPlural}}) == 0 {
+		return nil, errors.New("models: no {{$g.Table.Name}} {{$pkParamName}} provided for GetBy{{$pkTitlePlural}}")
+	}
+
+	sel := "*"
+	if len(selectCols) > 0 {
+		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
+	}
+	query := fmt.Sprintf(
+		"select %s from {{$g.Table.Name | $g.SchemaTable}} where `{{$pkParamName}}` in (?"+strings.Repeat(", ?", len({{$pkArgsPlural}})-1)+")", sel,
+	)
+
+	i := make([]interface{}, len({{$pkArgsPlural}}))
+	for k, v := range {{$pkArgsPlural}} {
+		i[k] = v
+	}
+	q := queries.Raw(query, i...)
+
+	err := q.Bind(nil, {{- if $g.NoContext}}boil.GetDB(){{else}}boil.GetContextDB(){{end}}, &o)
+	if err != nil {
+		if errors.Cause(err) == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		return nil, errors.Wrap(err, "{{$g.PkgName}}: unable to select from {{$g.Table.Name}}")
+	}
+
+	m := make(map[{{$pkParamType}}]*{{$alias.UpSingular}}, len(o))
+	for _, v := range o {
+		m[v.{{$pkTitles | join ""}}] = v
+	}
+
+	return m, nil
+}
+{{end}}
+
 {{- range $idx := .Table.Indexes}}
 {{- $titles := $idx.Columns | stringMap $g.StringFuncs.titleCase | stringMap $g.StringFuncs.replaceReserved -}}
 {{- $args := $idx.Columns | stringMap $g.StringFuncs.camelCase | stringMap $g.StringFuncs.replaceReserved -}}
@@ -49,26 +92,49 @@ func ({{$alias.DownPlural}}Mgr) GetBy{{ $titles | join ""}}({{ $funcArgs }}, sel
 
 	return {{$alias.DownSingular}}Obj, nil
 }
-{{- if len $titles | ge 1 }}
-{{- $paramName := index $args 0}}
-{{- $paramType := index $colDefs.Types 0}}
-func ({{$alias.DownPlural}}Mgr) GetBy{{ $titles | join "" | plural}}({{plural $paramName}} []{{$paramType}}, selectCols ...string) (map[{{$paramType}}]*{{$alias.UpSingular}}, error) {
-	{{$paramName}}Interfaces := []interface{}{}
-	for _, {{$paramName}} := range {{plural $paramName}} {
-		{{$paramName}}Interfaces = append({{$paramName}}Interfaces, interface{}({{$paramName}}))
-	}
-	{{$alias.DownPlural}}, err := {{$alias.UpPlural}}(qm.WhereIn("{{$paramName}} in ?", {{$paramName}}Interfaces...)).All(nil, boil.GetContextDB())
-	if err != nil {
-		return nil, err
+
+{{if len $titles | ge 1}}
+{{- $paramName := index $args 0 -}}
+{{- $paramType := index $colDefs.Types 0 -}}
+{{- $titlePlural := $titles | join "" | plural -}}
+{{- $argsPlural := plural $paramName -}}
+func ({{$alias.DownPlural}}Mgr) GetBy{{$titlePlural}}({{$argsPlural}} []{{$paramType}}, selectCols ...string) (map[{{$paramType}}]*{{$alias.UpSingular}}, error) {
+	var o []*{{$alias.UpSingular}}
+
+	if len({{$argsPlural}}) == 0 {
+		return nil, errors.New("models: no {{$g.Table.Name}} {{$paramName}} provided for GetBy{{$titlePlural}}")
 	}
 
-	result := make(map[{{$paramType}}]*{{$alias.UpSingular}}, len({{$alias.DownPlural}}))
-	for _, {{$alias.DownSingular}} := range {{$alias.DownPlural}} {
-		result[{{$alias.DownSingular}}.{{titleCase $paramName}}] = {{$alias.DownSingular}}
+	sel := "*"
+	if len(selectCols) > 0 {
+		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
-	return result, nil
+	query := fmt.Sprintf(
+		"select %s from {{$g.Table.Name | $g.SchemaTable}} where `{{$idx.Columns | join ""}}` in (?"+strings.Repeat(", ?", len({{$argsPlural}})-1)+")", sel,
+	)
+
+	i := make([]interface{}, len({{$argsPlural}}))
+	for k, v := range {{$argsPlural}} {
+		i[k] = v
+	}
+	q := queries.Raw(query, i...)
+
+	err := q.Bind(nil, {{- if $g.NoContext}}boil.GetDB(){{else}}boil.GetContextDB(){{end}}, &o)
+	if err != nil {
+		if errors.Cause(err) == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		return nil, errors.Wrap(err, "{{$g.PkgName}}: unable to select from {{$g.Table.Name}}")
+	}
+
+	m := make(map[{{$paramType}}]*{{$alias.UpSingular}}, len(o))
+	for _, v := range o {
+		m[v.{{$titles | join ""}}] = v
+	}
+
+	return m, nil
 }
-{{- end }}
+{{end}}
 {{else}}
 {{- $nouniqueFlag = true}}
 func ({{$alias.DownPlural}}Mgr) FindBy{{ $titles | join ""}}({{ $funcArgs }}) (*{{$alias.DownPlural}}MgrQueries) {
