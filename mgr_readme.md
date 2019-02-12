@@ -13,11 +13,8 @@ book1, err := models.BooksMgr.GetById(1, "optional selected fields")
 book2, err := models.BooksMgr.GetByISBN("11312321")
 book2, err := models.BooksMgr.GetByISBN("11312321", "optional selected fields")
 
-books, err := models.BooksMgr.FindAllByAuthorID(123)
-books, err := models.BooksMgr.FindAllByAuthorID(123, "optional selected fields")
-
-books, err := models.BooksMgr.FindByAuthorID(author_id, limit, offset, "optional selected fields")
-books, err := models.BooksMgr.FindByAuthorIDPublishYear(123, 2019, limit, offset, "optional selected fields")
+books, err := models.BooksMgr.FindByAuthorIDPublishYear(123, 2019).OrderBy("isbn desc").Select("isbn", "author_id").All()
+books, total, err := models.BooksMgr.FindByAuthorIDPublishYear(123, 2019).OrderBy("isbn desc").Select("isbn", "author_id").Pagination(10, 20)
 ```
 
 ## Handy Methods
@@ -40,17 +37,13 @@ These methods are generated for `primary key` and field with `unique index`, and
 
 * **optional** selected fields is supported
 
-### FindAllByXXX
+### FindByXXX
 
 `FindAllByXXX` methods returns **struct slice**.
 
 These methods are generated for indexes in table.
 
-* **optional** selected fields is supported
-* ordering support should be implemented
-
-### FindByXXX
-
-`FindByXXX` methods returns **struct slice**, its similar to `FindAllByXXX`, but with pagination support via limit / offset parameters.
-
-* ordering support should be implemented
+* **optional** selected fields is supported : Select()
+* support ordering : OrderBy()
+* support general queries : Where()
+* finished with All() or Pagination()
