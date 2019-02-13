@@ -91,15 +91,34 @@ func ({{$alias.DownPlural}}Mgr) GetBy{{ $titles | join ""}}({{ $funcArgs }}, sel
 
 	return {{$alias.DownSingular}}Obj, nil
 }
-{{- if len $titles | ge 1 }}
-{{- $paramName := index $args 0}}
-{{- $paramType := index $colDefs.Types 0}}
-func ({{$alias.DownPlural}}Mgr) GetBy{{ $titles | join "" | plural}}({{plural $paramName}} []{{$paramType}}, selectCols ...string) (map[{{$paramType}}]*{{$alias.UpSingular}}, error) {
-	{{$paramName}}Interfaces := []interface{}{}
-	for _, {{$paramName}} := range {{plural $paramName}} {
-		{{$paramName}}Interfaces = append({{$paramName}}Interfaces, interface{}({{$paramName}}))
+
+{{if len $titles | ge 1}}
+{{- $paramName := index $args 0 -}}
+{{- $paramType := index $colDefs.Types 0 -}}
+{{- $titlePlural := $titles | join "" | plural -}}
+{{- $argsPlural := plural $paramName -}}
+func ({{$alias.DownPlural}}Mgr) GetBy{{$titlePlural}}({{$argsPlural}} []{{$paramType}}, selectCols ...string) (map[{{$paramType}}]*{{$alias.UpSingular}}, error) {
+	var o []*{{$alias.UpSingular}}
+
+	if len({{$argsPlural}}) == 0 {
+		return nil, errors.New("models: no {{$g.Table.Name}} {{$paramName}} provided for GetBy{{$titlePlural}}")
 	}
-	{{$alias.DownPlural}}, err := {{$alias.UpPlural}}(qm.WhereIn("{{$paramName}} in ?", {{$paramName}}Interfaces...)).All({{- if $g.NoContext}}boil.GetDB(){{else}}nil, boil.GetContextDB(){{end}})
+
+	sel := "*"
+	if len(selectCols) > 0 {
+		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
+	}
+	query := fmt.Sprintf(
+		"select %s from {{$g.Table.Name | $g.SchemaTable}} where `{{$idx.Columns | join ""}}` in (?"+strings.Repeat(", ?", len({{$argsPlural}})-1)+")", sel,
+	)
+
+	i := make([]interface{}, len({{$argsPlural}}))
+	for k, v := range {{$argsPlural}} {
+		i[k] = v
+	}
+	q := queries.Raw(query, i...)
+
+	err := q.Bind(nil, {{- if $g.NoContext}}boil.GetDB(){{else}}boil.GetContextDB(){{end}}, &o)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
