@@ -1,6 +1,5 @@
 {{- $alias := .Aliases.Table .Table.Name -}}
 {{- $g := . -}}
-{{- $nouniqueFlag := false -}}
 {{- $colDefs := sqlColDefinitions .Table.Columns .Table.PKey.Columns -}}
 {{- $pkNames := $colDefs.Names | stringMap (aliasCols $alias) | stringMap .StringFuncs.camelCase | stringMap .StringFuncs.replaceReserved -}}
 {{- $pkTitles := $colDefs.Names | stringMap (aliasCols $alias) | stringMap .StringFuncs.titleCase | stringMap .StringFuncs.replaceReserved -}}
@@ -92,34 +91,15 @@ func ({{$alias.DownPlural}}Mgr) GetBy{{ $titles | join ""}}({{ $funcArgs }}, sel
 
 	return {{$alias.DownSingular}}Obj, nil
 }
-
-{{if len $titles | ge 1}}
-{{- $paramName := index $args 0 -}}
-{{- $paramType := index $colDefs.Types 0 -}}
-{{- $titlePlural := $titles | join "" | plural -}}
-{{- $argsPlural := plural $paramName -}}
-func ({{$alias.DownPlural}}Mgr) GetBy{{$titlePlural}}({{$argsPlural}} []{{$paramType}}, selectCols ...string) (map[{{$paramType}}]*{{$alias.UpSingular}}, error) {
-	var o []*{{$alias.UpSingular}}
-
-	if len({{$argsPlural}}) == 0 {
-		return nil, errors.New("models: no {{$g.Table.Name}} {{$paramName}} provided for GetBy{{$titlePlural}}")
+{{- if len $titles | ge 1 }}
+{{- $paramName := index $args 0}}
+{{- $paramType := index $colDefs.Types 0}}
+func ({{$alias.DownPlural}}Mgr) GetBy{{ $titles | join "" | plural}}({{plural $paramName}} []{{$paramType}}, selectCols ...string) (map[{{$paramType}}]*{{$alias.UpSingular}}, error) {
+	{{$paramName}}Interfaces := []interface{}{}
+	for _, {{$paramName}} := range {{plural $paramName}} {
+		{{$paramName}}Interfaces = append({{$paramName}}Interfaces, interface{}({{$paramName}}))
 	}
-
-	sel := "*"
-	if len(selectCols) > 0 {
-		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
-	}
-	query := fmt.Sprintf(
-		"select %s from {{$g.Table.Name | $g.SchemaTable}} where `{{$idx.Columns | join ""}}` in (?"+strings.Repeat(", ?", len({{$argsPlural}})-1)+")", sel,
-	)
-
-	i := make([]interface{}, len({{$argsPlural}}))
-	for k, v := range {{$argsPlural}} {
-		i[k] = v
-	}
-	q := queries.Raw(query, i...)
-
-	err := q.Bind(nil, {{- if $g.NoContext}}boil.GetDB(){{else}}boil.GetContextDB(){{end}}, &o)
+	{{$alias.DownPlural}}, err := {{$alias.UpPlural}}(qm.WhereIn("{{$paramName}} in ?", {{$paramName}}Interfaces...)).All({{- if $g.NoContext}}boil.GetDB(){{else}}nil, boil.GetContextDB(){{end}})
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
@@ -136,7 +116,6 @@ func ({{$alias.DownPlural}}Mgr) GetBy{{$titlePlural}}({{$argsPlural}} []{{$param
 }
 {{end}}
 {{else}}
-{{- $nouniqueFlag = true}}
 func ({{$alias.DownPlural}}Mgr) FindBy{{ $titles | join ""}}({{ $funcArgs }}) (*{{$alias.DownPlural}}MgrQueries) {
 	queries := []qm.QueryMod{
 		{{- range $col := $idx.Columns}}
@@ -148,20 +127,19 @@ func ({{$alias.DownPlural}}Mgr) FindBy{{ $titles | join ""}}({{ $funcArgs }}) (*
 }
 {{ end -}}
 {{ end -}}
-{{ if $nouniqueFlag -}}
 type {{$alias.DownPlural}}MgrQueries struct {
 	queries []qm.QueryMod
 }
 
 // PaginateWithToal returns certain page of {{$alias.DownSingular}} record and total number of all record
 func (q *{{$alias.DownPlural}}MgrQueries) PaginateWithToal(limit int, offset int) ({{$alias.UpSingular}}Slice, int64, error) {
-	total, err := {{$alias.UpPlural}}(q.queries...).Count(context.TODO(), boil.GetContextDB())
+	total, err := {{$alias.UpPlural}}(q.queries...).Count({{- if $g.NoContext}}boil.GetDB(){{else}}nil, boil.GetContextDB(){{end}})
 	if err != nil {
 		return nil, 0, err
 	}
 
 	q.queries = append(q.queries, qm.Limit(limit), qm.Offset(offset))
-	{{$alias.DownPlural}}, err := {{$alias.UpPlural}}(q.queries...).All(nil, boil.GetContextDB())
+	{{$alias.DownPlural}}, err := {{$alias.UpPlural}}(q.queries...).All({{- if $g.NoContext}}boil.GetDB(){{else}}nil, boil.GetContextDB(){{end}})
 	if err != nil {
 		return nil, 0, err
 	}
@@ -172,9 +150,9 @@ func (q *{{$alias.DownPlural}}MgrQueries) PaginateWithToal(limit int, offset int
 // Paginate returns certain page of {{$alias.DownSingular}} record
 func (q *{{$alias.DownPlural}}MgrQueries) Paginate(limit int, offset int) ({{$alias.UpSingular}}Slice, error) {
 	q.queries = append(q.queries, qm.Limit(limit), qm.Offset(offset))
-	{{$alias.DownPlural}}, err := {{$alias.UpPlural}}(q.queries...).All(nil, boil.GetContextDB())
+	{{$alias.DownPlural}}, err := {{$alias.UpPlural}}(q.queries...).All({{- if $g.NoContext}}boil.GetDB(){{else}}nil, boil.GetContextDB(){{end}})
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	return {{$alias.DownPlural}}, nil
@@ -182,7 +160,7 @@ func (q *{{$alias.DownPlural}}MgrQueries) Paginate(limit int, offset int) ({{$al
 
 // All returns all {{$alias.DownSingular}} record
 func (q *{{$alias.DownPlural}}MgrQueries) All() ({{$alias.UpSingular}}Slice, error) {
-	return {{$alias.UpPlural}}(q.queries...).All(nil, boil.GetContextDB())
+	return {{$alias.UpPlural}}(q.queries...).All({{- if $g.NoContext}}boil.GetDB(){{else}}nil, boil.GetContextDB(){{end}})
 }
 
 func (q *{{$alias.DownPlural}}MgrQueries) OrderBy(orderClause string) *{{$alias.DownPlural}}MgrQueries {
@@ -199,4 +177,3 @@ func (q *{{$alias.DownPlural}}MgrQueries) Where(queries ...qm.QueryMod) *{{$alia
 	q.queries = append(q.queries, queries...)
 	return q
 }
-{{ end }}
