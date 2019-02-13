@@ -153,8 +153,8 @@ type {{$alias.DownPlural}}MgrQueries struct {
 	queries []qm.QueryMod
 }
 
-// Pagination returns {{$alias.DownSingular}} record and total number of all record
-func (q *{{$alias.DownPlural}}MgrQueries) Pagination(limit int, offset int) ({{$alias.UpSingular}}Slice, int64, error) {
+// PaginateWithToal returns certain page of {{$alias.DownSingular}} record and total number of all record
+func (q *{{$alias.DownPlural}}MgrQueries) PaginateWithToal(limit int, offset int) ({{$alias.UpSingular}}Slice, int64, error) {
 	total, err := {{$alias.UpPlural}}(q.queries...).Count(context.TODO(), boil.GetContextDB())
 	if err != nil {
 		return nil, 0, err
@@ -167,6 +167,17 @@ func (q *{{$alias.DownPlural}}MgrQueries) Pagination(limit int, offset int) ({{$
 	}
 
 	return {{$alias.DownPlural}}, total, nil
+}
+
+// Paginate returns certain page of {{$alias.DownSingular}} record
+func (q *{{$alias.DownPlural}}MgrQueries) Paginate(limit int, offset int) ({{$alias.UpSingular}}Slice, error) {
+	q.queries = append(q.queries, qm.Limit(limit), qm.Offset(offset))
+	{{$alias.DownPlural}}, err := {{$alias.UpPlural}}(q.queries...).All(nil, boil.GetContextDB())
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return {{$alias.DownPlural}}, nil
 }
 
 // All returns all {{$alias.DownSingular}} record

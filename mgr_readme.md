@@ -14,7 +14,8 @@ book2, err := models.BooksMgr.GetByISBN("11312321")
 book2, err := models.BooksMgr.GetByISBN("11312321", "optional selected fields")
 
 books, err := models.BooksMgr.FindByAuthorIDPublishYear(123, 2019).OrderBy("isbn desc").Select("isbn", "author_id").All()
-books, total, err := models.BooksMgr.FindByAuthorIDPublishYear(123, 2019).OrderBy("isbn desc").Select("isbn", "author_id").Pagination(10, 20)
+books, err := models.BooksMgr.FindByAuthorIDPublishYear(123, 2019).OrderBy("isbn desc").Select("isbn", "author_id").Paginate(10, 20)
+books, total, err := models.BooksMgr.FindByAuthorIDPublishYear(123, 2019).OrderBy("isbn desc").Select("isbn", "author_id").PaginateWithTotal(10, 20)
 ```
 
 ## Handy Methods
@@ -46,4 +47,4 @@ These methods are generated for indexes in table.
 * **optional** selected fields is supported : Select()
 * support ordering : OrderBy()
 * support general queries : Where()
-* finished with All() or Pagination()
+* finished with All(), Paginate() or PaginateWithTotal()
