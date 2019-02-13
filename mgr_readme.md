@@ -48,3 +48,41 @@ These methods are generated for indexes in table.
 * support ordering : OrderBy()
 * support general queries : Where()
 * finished with All(), Paginate() or PaginateWithTotal()
+
+## Timestamp conversion
+
+sqlboiler can only scan datetime and timestamp value into time.Time or byte[]. However, to prevent time zone affect, we usually pass time value as unix timestamp which is a int64 value between frontend and backend. In this case, developers have to convert the timestamp type manually during development which causes extra efforts.
+
+### solution
+
+Add a DSN parameter `parseTime=int64`, and if you have set this parameter, sqlboiler will scan datetime and timestamp value in database into int64 (unix timestamp).
+
+## Better transaction
+
+Currently, for every operation in a single transaction, developers have to check error and write rollback or commit code mannually.
+
+### solution
+
+Generate a helper and accepts a callback to handling rollbacks or commit.
+
+```go
+// Transact transact handler
+func Transact(db *sql.DB, txFunc func(*sql.Tx) error) (err error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return
+	}
+	defer func() {
+		if p := recover(); p != nil {
+			tx.Rollback()
+			panic(p) // re-throw panic after Rollback
+		} else if err != nil {
+			tx.Rollback() // err is non-nil; don't change it
+		} else {
+			err = tx.Commit() // err is nil; if Commit returns error update err
+		}
+	}()
+	err = txFunc(tx)
+	return err
+}
+```
