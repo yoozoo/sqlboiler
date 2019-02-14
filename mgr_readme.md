@@ -55,7 +55,7 @@ sqlboiler can only scan datetime and timestamp value into time.Time or byte[]. H
 
 ### solution
 
-Add a DSN parameter `parseTime=int64`, and if you have set this parameter, sqlboiler will scan datetime and timestamp value in database into int64 (unix timestamp).
+We scan datetime or timestamp data into a new struct (types.time) which contains time.Time and its unix value.
 
 ## Better transaction
 
