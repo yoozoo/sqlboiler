@@ -228,6 +228,11 @@ func NewDefaultImports() Collection {
 				`"github.com/volatiletech/sqlboiler/strmangle"`,
 			},
 		},
+		"boil_helper": {
+			Standard: List{
+				`"database/sql"`,
+			},
+		},
 	}
 
 	col.Test = Set{
