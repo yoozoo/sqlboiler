@@ -86,3 +86,57 @@ func Transact(db *sql.DB, txFunc func(*sql.Tx) error) (err error) {
 	return err
 }
 ```
+
+## Sharding
+
+We support database sharding with a yaml configuration file. Assume we have a table `books` and we sharded it into two shards `books_shards_1` and `books_shards_2`. The shard key we use to devide the shards is `author_id`. We can write a `sqlboiler.yaml`:
+
+``` yaml
+default: &default
+  adapter: mysql
+  encoding: utf8mb4
+  username: root
+  password: root
+  master:
+    - localhost:3306
+
+tables:
+  books:
+    shard: true
+    shard_key: author_id
+    shards:
+      - book_shard_1:
+          <<: *default
+          database: books_shard_1
+      - book_shard_2:
+          <<: *default
+          database: books_shard_2
+```
+
+And to query from `books` table, we need to load the configuration from `sqlboiler.yaml` first.
+
+```go
+// load sharding config
+if err := boil.LoadConfig("sqlboiler.yaml"); err != nil {
+    panic(err)
+}
+// open sql connection
+db, err := sql.Open("mysql", "?parseTime=true")
+if err != nil {
+    panic(err)
+}
+// set executor
+boil.SetDB(db)
+// get book with id equals 1
+book, err := models.BooksMgr.GetByID(1)
+if err != nil {
+    panic(err)
+}
+// get books published by Penguin
+books, err := models.Books(qm.Where("publisher=?", "Penguin")).All(db)
+if err != nil {
+    panic(err)
+}
+```
+
+The default sharding algorithm is `modulo`.
