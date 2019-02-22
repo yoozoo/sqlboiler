@@ -2,8 +2,9 @@ package queries
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
+
+	"database/sql"
 
 	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/volatiletech/sqlboiler/drivers"

@@ -34,6 +34,7 @@ type Config struct {
 
 	Aliases      Aliases       `toml:"aliases,omitempty" json:"aliases,omitempty"`
 	TypeReplaces []TypeReplace `toml:"type_replaces,omitempty" json:"type_replaces,omitempty"`
+	Sharding     bool          `toml:"sharding,omitempty" json:"sharding,omitempty"`
 }
 
 // TypeReplace replaces a column type with something else

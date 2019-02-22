@@ -12,9 +12,9 @@ var {{$alias.UpPlural}}Mgr {{$alias.DownPlural}}Mgr
 
 func ({{$alias.DownPlural}}Mgr) GetBy{{$pkTitles | join ""}}({{$pkArgs}}, selectCols ...string) (*{{$alias.UpSingular}}, error) {
 	{{- if .NoContext}}
-	return Find{{$alias.UpSingular}}(boil.GetDB(), {{$pkNames | join ", "}}, selectCols...)
+	return Find{{$alias.UpSingular}}({{- if .Sharding}}boil.Shard(int64({{$pkNames | join ", "}})){{else}}boil.GetDB(){{end -}}, {{$pkNames | join ", "}}, selectCols...)
 	{{else}}
-	return Find{{$alias.UpSingular}}(nil, boil.GetContextDB(), {{$pkNames | join ", "}}, selectCols...)
+	return Find{{$alias.UpSingular}}(nil, {{- if .Sharding}}boil.ContextShard(int64({{$pkNames | join ", "}})){{else}}boil.GetContextDB(){{end -}}, {{$pkNames | join ", "}}, selectCols...)
 	{{end -}}
 }
 
@@ -137,8 +137,8 @@ func ({{$alias.DownPlural}}Mgr) GetBy{{$titlePlural}}({{$argsPlural}} []{{$param
 {{else}}
 func ({{$alias.DownPlural}}Mgr) FindBy{{ $titles | join ""}}({{ $funcArgs }}) (*{{$alias.DownPlural}}MgrQueries) {
 	queries := []qm.QueryMod{
-		{{- range $col := $idx.Columns}}
-		qm.Where("{{$col}} = ?", authorID),
+		{{- range $i, $col := $idx.Columns}}
+		qm.Where("{{$col}} = ?", {{index $args $i}}),
 		{{- end }}
 	}
 
@@ -150,8 +150,8 @@ type {{$alias.DownPlural}}MgrQueries struct {
 	queries []qm.QueryMod
 }
 
-// PaginateWithToal returns certain page of {{$alias.DownSingular}} record and total number of all record
-func (q *{{$alias.DownPlural}}MgrQueries) PaginateWithToal(limit int, offset int) ({{$alias.UpSingular}}Slice, int64, error) {
+// PaginateWithTotal returns certain page of {{$alias.DownSingular}} record and total number of all record
+func (q *{{$alias.DownPlural}}MgrQueries) PaginateWithTotal(limit int, offset int) ({{$alias.UpSingular}}Slice, int64, error) {
 	total, err := {{$alias.UpPlural}}(q.queries...).Count({{- if $g.NoContext}}boil.GetDB(){{else}}nil, boil.GetContextDB(){{end}})
 	if err != nil {
 		return nil, 0, err

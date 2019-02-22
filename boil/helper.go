@@ -1,3 +1,7 @@
+package boil
+
+import "database/sql"
+
 // Transact transact handler
 func Transact(db *sql.DB, txFunc func(*sql.Tx) error) (err error) {
 	tx, err := db.Begin()

@@ -493,7 +493,7 @@ func (p *PostgresDriver) TranslateColumnType(c drivers.Column) drivers.Column {
 		case "boolean":
 			c.Type = "bool"
 		case "date", "time", "timestamp without time zone", "timestamp with time zone", "time without time zone", "time with time zone":
-			c.Type = "types.Time"
+			c.Type = "time.Time"
 		case "point":
 			c.Type = "pgeo.Point"
 		case "line":
@@ -652,8 +652,8 @@ func (p PostgresDriver) Imports() (importers.Collection, error) {
 		"null.Bytes": {
 			ThirdParty: importers.List{`"github.com/volatiletech/null"`},
 		},
-		"types.Time": {
-			ThirdParty: importers.List{`"github.com/volatiletech/sqlboiler/types"`},
+		"time.Time": {
+			ThirdParty: importers.List{`"time"`},
 		},
 		"types.JSON": {
 			ThirdParty: importers.List{`"github.com/volatiletech/sqlboiler/types"`},

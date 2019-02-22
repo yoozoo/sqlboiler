@@ -59,6 +59,9 @@ type templateData struct {
 
 	// StringFuncs are usable in templates with stringMap
 	StringFuncs map[string]func(string) string
+
+	// Sharding enables database sharding
+	Sharding bool
 }
 
 func (t templateData) Quotes(s string) string {

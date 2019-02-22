@@ -488,7 +488,7 @@ func (m *MySQLDriver) TranslateColumnType(c drivers.Column) drivers.Column {
 		case "boolean", "bool":
 			c.Type = "bool"
 		case "date", "datetime", "timestamp":
-			c.Type = "types.Time"
+			c.Type = "time.Time"
 		case "binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob":
 			c.Type = "[]byte"
 		case "numeric", "decimal", "dec", "fixed":
@@ -606,8 +606,8 @@ func (MySQLDriver) Imports() (col importers.Collection, err error) {
 			ThirdParty: importers.List{`"github.com/volatiletech/null"`},
 		},
 
-		"types.Time": {
-			ThirdParty: importers.List{`"github.com/volatiletech/sqlboiler/types"`},
+		"time.Time": {
+			ThirdParty: importers.List{`"time"`},
 		},
 		"types.JSON": {
 			ThirdParty: importers.List{`"github.com/volatiletech/sqlboiler/types"`},
