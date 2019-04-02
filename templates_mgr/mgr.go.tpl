@@ -6,7 +6,9 @@
 {{- $pkArgs := joinSlices " " $pkNames $colDefs.Types | join ", "}}
 
 // Manager Handy methods
-type {{$alias.DownPlural}}Mgr int
+type {{$alias.DownPlural}}Mgr struct {
+	queries []qm.QueryMod
+}
 
 var {{$alias.UpPlural}}Mgr {{$alias.DownPlural}}Mgr
 
@@ -135,23 +137,30 @@ func ({{$alias.DownPlural}}Mgr) GetBy{{$titlePlural}}({{$argsPlural}} []{{$param
 }
 {{end}}
 {{else}}
-func ({{$alias.DownPlural}}Mgr) FindBy{{ $titles | join ""}}({{ $funcArgs }}) (*{{$alias.DownPlural}}MgrQueries) {
+func (booksMgr) FindAllBy{{ $titles | join ""}}({{ $funcArgs }}) ({{$alias.UpSingular}}Slice, error) {
 	queries := []qm.QueryMod{
 		{{- range $i, $col := $idx.Columns}}
 		qm.Where("{{$col}} = ?", {{index $args $i}}),
 		{{- end }}
 	}
 
-	return &{{$alias.DownPlural}}MgrQueries{queries: queries}
-}
-{{ end -}}
-{{ end -}}
-type {{$alias.DownPlural}}MgrQueries struct {
-	queries []qm.QueryMod
+	return {{$alias.UpPlural}}(queries...).All({{- if $g.NoContext}}boil.GetDB(){{else}}nil, boil.GetContextDB(){{end}})
 }
 
+func ({{$alias.DownPlural}}Mgr) FindBy{{ $titles | join ""}}({{ $funcArgs }}) (*{{$alias.DownPlural}}Mgr) {
+	queries := []qm.QueryMod{
+		{{- range $i, $col := $idx.Columns}}
+		qm.Where("{{$col}} = ?", {{index $args $i}}),
+		{{- end }}
+	}
+
+	return &{{$alias.DownPlural}}Mgr{queries: queries}
+}
+{{ end -}}
+{{ end -}}
+
 // PaginateWithTotal returns certain page of {{$alias.DownSingular}} record and total number of all record
-func (q *{{$alias.DownPlural}}MgrQueries) PaginateWithTotal(limit int, offset int) ({{$alias.UpSingular}}Slice, int64, error) {
+func (q *{{$alias.DownPlural}}Mgr) PaginateWithTotal(limit int, offset int) ({{$alias.UpSingular}}Slice, int64, error) {
 	total, err := {{$alias.UpPlural}}(q.queries...).Count({{- if $g.NoContext}}boil.GetDB(){{else}}nil, boil.GetContextDB(){{end}})
 	if err != nil {
 		return nil, 0, err
@@ -167,7 +176,7 @@ func (q *{{$alias.DownPlural}}MgrQueries) PaginateWithTotal(limit int, offset in
 }
 
 // Paginate returns certain page of {{$alias.DownSingular}} record
-func (q *{{$alias.DownPlural}}MgrQueries) Paginate(limit int, offset int) ({{$alias.UpSingular}}Slice, error) {
+func (q *{{$alias.DownPlural}}Mgr) Paginate(limit int, offset int) ({{$alias.UpSingular}}Slice, error) {
 	q.queries = append(q.queries, qm.Limit(limit), qm.Offset(offset))
 	{{$alias.DownPlural}}, err := {{$alias.UpPlural}}(q.queries...).All({{- if $g.NoContext}}boil.GetDB(){{else}}nil, boil.GetContextDB(){{end}})
 	if err != nil {
@@ -178,21 +187,21 @@ func (q *{{$alias.DownPlural}}MgrQueries) Paginate(limit int, offset int) ({{$al
 }
 
 // All returns all {{$alias.DownSingular}} record
-func (q *{{$alias.DownPlural}}MgrQueries) All() ({{$alias.UpSingular}}Slice, error) {
+func (q *{{$alias.DownPlural}}Mgr) All() ({{$alias.UpSingular}}Slice, error) {
 	return {{$alias.UpPlural}}(q.queries...).All({{- if $g.NoContext}}boil.GetDB(){{else}}nil, boil.GetContextDB(){{end}})
 }
 
-func (q *{{$alias.DownPlural}}MgrQueries) OrderBy(orderClause string) *{{$alias.DownPlural}}MgrQueries {
+func (q *{{$alias.DownPlural}}Mgr) OrderBy(orderClause string) *{{$alias.DownPlural}}Mgr {
 	q.queries = append(q.queries, qm.OrderBy(orderClause))
 	return q
 }
 
-func (q *{{$alias.DownPlural}}MgrQueries) Select(cols ...string) *{{$alias.DownPlural}}MgrQueries {
+func (q *{{$alias.DownPlural}}Mgr) Select(cols ...string) *{{$alias.DownPlural}}Mgr {
 	q.queries = append(q.queries, qm.Select(cols...))
 	return q
 }
 
-func (q *{{$alias.DownPlural}}MgrQueries) Where(queries ...qm.QueryMod) *{{$alias.DownPlural}}MgrQueries {
+func (q *{{$alias.DownPlural}}Mgr) Where(queries ...qm.QueryMod) *{{$alias.DownPlural}}Mgr {
 	q.queries = append(q.queries, queries...)
 	return q
 }

@@ -49,6 +49,12 @@ These methods are generated for indexes in table.
 * support general queries : Where()
 * finished with All(), Paginate() or PaginateWithTotal()
 
+```go
+books, err := models.BooksMgr.FindAllByAuthorIDPublishYear(123, 2019)
+
+books, total, err := models.BooksMgr.FindByAuthorIDPublishYear(123, 2019).OrderBy("isbn desc").Select("isbn", "author_id").PaginateWithTotal(10, 20)
+```
+
 ## Better transaction
 
 Currently, for every operation in a single transaction, developers have to check error and write rollback or commit code mannually.
@@ -138,6 +144,4 @@ It reduces the redundant `tx.Rollback()` or `tx.Commit()` code.
 
 ## To be implemented
 
-* custom type in 'IN' query
-* select with pagination with condition
 * mysql functions
