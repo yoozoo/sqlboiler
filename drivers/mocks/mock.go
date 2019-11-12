@@ -124,6 +124,11 @@ func (m *MockDriver) Columns(schema, tableName string, whitelist, blacklist []st
 	}[tableName], nil
 }
 
+// Indexs returns mock index info for the passed in table name
+func (m *MockDriver) Indexes(schema, tableName string) ([]*drivers.Index, error) {
+	return []*drivers.Index{}, nil
+}
+
 // ForeignKeyInfo returns a list of mock foreignkeys
 func (m *MockDriver) ForeignKeyInfo(schema, tableName string) ([]drivers.ForeignKey, error) {
 	return map[string][]drivers.ForeignKey{

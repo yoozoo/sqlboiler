@@ -1,6 +1,7 @@
 package boil
 
 import (
+	"database/sql"
 	"io"
 	"os"
 	"time"
@@ -10,6 +11,10 @@ var (
 	// currentDB is a global database handle for the package
 	currentDB        Executor
 	currentContextDB ContextExecutor
+	// currentShard is a global sharding database handle
+	currentShards        []Executor
+	currentContextShards []ContextExecutor
+
 	// timestampLocation is the timezone used for the
 	// automated setting of created_at/updated_at columns
 	timestampLocation = time.UTC
@@ -57,4 +62,32 @@ func SetLocation(loc *time.Location) {
 // if the package was not generated with the --no-auto-timestamps flag.
 func GetLocation() *time.Location {
 	return timestampLocation
+}
+
+// SetShards initializes the database handle for all template db interactions
+func SetShards(shards ...Executor) {
+	currentShards = shards
+	for _, v := range currentShards {
+		if c, ok := v.(ContextExecutor); ok {
+			currentContextShards = append(currentContextShards, c)
+		}
+	}
+}
+
+// GetShards retrieves the global state database handle
+func GetShards() []Executor {
+	return currentShards
+}
+
+// CreateShards creates shards group
+func CreateShards(shardDsns ...string) {
+	var shards []Executor
+	for _, v := range shardDsns {
+		con, err := sql.Open("mysql", v)
+		if err != nil {
+			panic(err)
+		}
+		shards = append(shards, con)
+	}
+	SetShards(shards...)
 }

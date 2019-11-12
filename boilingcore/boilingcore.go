@@ -147,6 +147,7 @@ func (s *State) Run() error {
 
 		DBTypes:     make(once),
 		StringFuncs: templateStringMappers,
+		Sharding:    s.Config.Sharding,
 	}
 
 	if err := generateSingletonOutput(s, data); err != nil {

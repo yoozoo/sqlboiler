@@ -122,7 +122,7 @@ func (o *{{$alias.UpSingular}}) Insert({{if .NoContext}}exec boil.Executor{{else
 	if err != nil {
 		return errors.Wrap(err, "{{.PkgName}}: unable to insert into {{.Table.Name}}")
 	}
-	
+
 	{{if $canLastInsertID -}}
 	var lastID int64
 	{{- end}}
@@ -200,4 +200,85 @@ CacheNoHooks:
 	{{- else -}}
 	return nil
 	{{- end}}
+}
+
+
+// InsertAll inserts all rows with the specified column values, using an executor.
+func (o {{$alias.UpSingular}}Slice) InsertAll({{if .NoContext}}exec boil.Executor{{else}}ctx context.Context, exec boil.ContextExecutor{{end}}, columns boil.Columns) (int64, error) {
+	ln := int64(len(o))
+	if ln == 0 {
+		return 0, nil
+	}
+
+	// take all columns
+	wl, _ := columns.InsertColumnSet(
+		{{$alias.DownSingular}}Columns,
+		{{$alias.DownSingular}}ColumnsWithDefault,
+		{{$alias.DownSingular}}ColumnsWithoutDefault,
+		{{$alias.DownSingular}}ColumnsWithDefault,
+	)
+	valueMapping, err := queries.BindMapping({{$alias.DownSingular}}Type, {{$alias.DownSingular}}Mapping, wl)
+	if err != nil {
+		return 0, err
+	}
+
+	var args []interface{}
+	var insertPlaceHolder string
+	for _, obj := range o {
+		value := reflect.Indirect(reflect.ValueOf(obj))
+		arg := queries.ValuesFromMapping(value, valueMapping)
+
+		// get current col
+		nzDefaults := queries.NonZeroDefaultSet({{$alias.DownSingular}}ColumnsWithDefault, obj)
+		cwl, _ := columns.InsertColumnSet(
+			{{$alias.DownSingular}}Columns,
+			{{$alias.DownSingular}}ColumnsWithDefault,
+			{{$alias.DownSingular}}ColumnsWithoutDefault,
+			nzDefaults,
+		)
+		buf := strmangle.GetBuffer()
+		buf.WriteByte('(')
+		i := 0
+		j := 0
+		for i < len(wl) {
+			if i != 0 {
+				buf.WriteByte(',')
+			}
+			if wl[i] == cwl[j] {
+				buf.WriteByte('?')
+				args = append(args, arg[i])
+				i++
+				j++
+			} else {
+				buf.WriteString("DEFAULT")
+				i++
+			}
+		}
+		buf.WriteByte(')')
+		insertPlaceHolder += buf.String()
+		insertPlaceHolder += ","
+		strmangle.PutBuffer(buf)
+	}
+
+	sql := fmt.Sprintf(
+		"INSERT INTO {{$schemaTable}} (`%s`) VALUES %s",
+		strings.Join(wl, "`,`"),
+		insertPlaceHolder[:len(insertPlaceHolder)-1],
+	)
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, sql)
+		fmt.Fprintln(boil.DebugWriter, args...)
+	}
+
+	result, err := exec.Exec(sql, args...)
+	if err != nil {
+		return 0, errors.Wrap(err, "{{.PkgName}}: unable to insert all in {{$alias.DownSingular}} slice")
+	}
+
+	rowsAff, err := result.RowsAffected()
+	if err != nil {
+		return 0, errors.Wrap(err, "{{.PkgName}}: unable to retrieve rows affected all in insert all {{$alias.DownSingular}}")
+	}
+	return rowsAff, nil
 }

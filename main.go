@@ -16,9 +16,9 @@ import (
 	"github.com/volatiletech/sqlboiler/importers"
 )
 
-//go:generate go-bindata -nometadata -pkg templatebin -o templatebin/bindata.go templates templates/singleton templates_test templates_test/singleton
+//go:generate go-bindata -nometadata -pkg templatebin -o templatebin/bindata.go templates templates/singleton templates_test templates_test/singleton templates_mgr
 
-const sqlBoilerVersion = "3.2.0"
+const sqlBoilerVersion = "3.2.1"
 
 var (
 	flagConfigFile string
@@ -106,6 +106,7 @@ func main() {
 	rootCmd.PersistentFlags().BoolP("version", "", false, "Print the version")
 	rootCmd.PersistentFlags().BoolP("wipe", "", false, "Delete the output folder (rm -rf) before generation to ensure sanity")
 	rootCmd.PersistentFlags().StringP("struct-tag-casing", "", "snake", "Decides the casing for go structure tag names. camel or snake (default snake)")
+	rootCmd.PersistentFlags().BoolP("sharding", "", false, "Enables database sharding")
 
 	// hide flags not recommended for use
 	rootCmd.PersistentFlags().MarkHidden("replace")
@@ -179,6 +180,7 @@ func preRun(cmd *cobra.Command, args []string) error {
 		Replacements:     viper.GetStringSlice("replace"),
 		Aliases:          boilingcore.ConvertAliases(viper.Get("aliases")),
 		TypeReplaces:     boilingcore.ConvertTypeReplace(viper.Get("types")),
+		Sharding:         viper.GetBool("sharding"),
 	}
 
 	if cmdConfig.Debug {
